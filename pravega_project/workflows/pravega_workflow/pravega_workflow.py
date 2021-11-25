@@ -26,7 +26,7 @@ from ai_flow.workflow.status import Status
 from pravega_processors import ModelTrainer, ValidateDatasetReader, ModelValidator, Source, Sink, \
     Predictor, StreamPreprocessSource, StreamPreprocessExecutor, StreamPreprocessSink, StreamTrainSource
 
-DATASET_URI = os.path.abspath(os.path.join(__file__, "../../../../")) + '/resources/iris_{}.csv'
+DATASET_URI = os.path.abspath(os.path.join(__file__, "../../../")) + '/resources/iris_{}.csv'
 
 
 def run_workflow():
