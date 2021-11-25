@@ -236,8 +236,7 @@ class Predictor(FlinkPythonProcessor):
         """
         Use pyflink udf to do prediction
         """
-        model_meta = af.get_deployed_model_version(self.model_name)
-        model_path = model_meta.model_path
+        model_path = get_file_dir(__file__) + '/saved_model'
         clf = load(model_path)
 
         # Define the python udf
