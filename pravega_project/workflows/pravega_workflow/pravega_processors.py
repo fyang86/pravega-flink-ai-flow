@@ -23,7 +23,6 @@ from typing import List
 import ai_flow as af
 import pandas as pd
 from ai_flow.model_center.entity.model_version_stage import ModelVersionStage
-from ai_flow.util.path_util import get_file_dir
 from ai_flow_plugins.job_plugins import flink
 from ai_flow_plugins.job_plugins.flink import FlinkPythonProcessor
 from ai_flow_plugins.job_plugins.python.python_processor import ExecutionContext, PythonProcessor
@@ -129,7 +128,7 @@ class ModelTrainer(FlinkPythonProcessor):
         print("finish train")
 
         # Save model to local
-        model_path = get_file_dir(__file__) + '/saved_model'
+        model_path = os.path.dirname(os.path.realpath(__file__)) + '/saved_model'
         if not os.path.exists(model_path):
             os.makedirs(model_path)
         model_timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())
@@ -236,7 +235,8 @@ class Predictor(FlinkPythonProcessor):
         """
         Use pyflink udf to do prediction
         """
-        model_path = get_file_dir(__file__) + '/saved_model'
+        model_meta = af.get_deployed_model_version(self.model_name)
+        model_path = model_meta.model_path
         clf = load(model_path)
 
         # Define the python udf
