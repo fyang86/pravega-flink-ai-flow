@@ -23,6 +23,7 @@ from typing import List
 import ai_flow as af
 import pandas as pd
 from ai_flow.model_center.entity.model_version_stage import ModelVersionStage
+from ai_flow.util.path_util import get_file_dir
 from ai_flow_plugins.job_plugins import flink
 from ai_flow_plugins.job_plugins.flink import FlinkPythonProcessor
 from ai_flow_plugins.job_plugins.python.python_processor import ExecutionContext, PythonProcessor
@@ -33,6 +34,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 EXAMPLE_COLUMNS = ['sl', 'sw', 'pl', 'pw', 'type']
 flink.set_flink_env(flink.FlinkStreamEnv())
+
 
 class StreamPreprocessSource(FlinkPythonProcessor):
 
@@ -122,13 +124,11 @@ class ModelTrainer(FlinkPythonProcessor):
         x_train, y_train = pdtb.values, pdtb.pop(EXAMPLE_COLUMNS[4])
         model_meta: af.ModelMeta = execution_context.config.get('model_info')
         clf = KNeighborsClassifier(n_neighbors=5)
-        print("start train")
         # x_train, y_train = input_list[0][0], input_list[0][1]
         clf.fit(x_train, y_train)
-        print("finish train")
 
         # Save model to local
-        model_path = os.path.dirname(os.path.realpath(__file__)) + '/saved_model'
+        model_path = get_file_dir(__file__) + '/saved_model'
         if not os.path.exists(model_path):
             os.makedirs(model_path)
         model_timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())

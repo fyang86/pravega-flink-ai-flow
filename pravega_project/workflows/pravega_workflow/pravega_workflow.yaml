@@ -20,12 +20,12 @@
 preprocess:
   job_type: flink
   properties:
-    run_mode: cluster
+    run_mode: local
 
 train:
   job_type: flink
   properties:
-    run_mode: cluster
+    run_mode: local
 
 validate:
   job_type: python
@@ -33,4 +33,4 @@ validate:
 predict:
   job_type: flink
   properties:
-    run_mode: cluster
+    run_mode: local

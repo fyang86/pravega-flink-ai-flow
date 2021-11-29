@@ -19,6 +19,7 @@
 import os
 
 import ai_flow as af
+from ai_flow.util.path_util import get_file_dir
 from ai_flow.model_center.entity.model_version_stage import ModelVersionEventType
 from ai_flow.workflow.status import Status
 
@@ -79,7 +80,7 @@ def run_workflow():
                                                 read_dataset_processor=ValidateDatasetReader())
         validate_artifact_name = artifact_prefix + 'validate_artifact'
         validate_artifact = af.register_artifact(name=validate_artifact_name,
-                                                 uri=os.path.dirname(os.path.realpath(__file__)) + '/validate_result')
+                                                 uri=get_file_dir(__file__) + '/validate_result')
         validate_channel = af.model_validate(input=[validate_read_dataset],
                                              model_info=stream_model_info,
                                              model_validation_processor=ModelValidator(validate_artifact_name))
@@ -96,7 +97,7 @@ def run_workflow():
                                      prediction_processor=Predictor())
         # Save prediction result
         write_dataset = af.register_dataset(name=artifact_prefix + 'write_dataset',
-                                            uri=os.path.dirname(os.path.realpath(__file__)) + '/predict_result.csv')
+                                            uri=get_file_dir(__file__) + '/predict_result.csv')
         af.write_dataset(input=predict_channel,
                          dataset_info=write_dataset,
                          write_dataset_processor=Sink())
