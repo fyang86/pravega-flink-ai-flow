@@ -17,15 +17,15 @@
 ## under the License.
 ##
 
-preprocess:
+generate_data:
   job_type: flink
   properties:
-    run_mode: local
+    run_mode: cluster
 
 train:
   job_type: flink
   properties:
-    run_mode: local
+    run_mode: cluster
 
 validate:
   job_type: python
@@ -33,4 +33,4 @@ validate:
 predict:
   job_type: flink
   properties:
-    run_mode: local
+    run_mode: cluster

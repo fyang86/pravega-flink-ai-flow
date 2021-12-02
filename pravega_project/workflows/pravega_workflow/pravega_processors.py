@@ -23,7 +23,6 @@ from typing import List
 import ai_flow as af
 import pandas as pd
 from ai_flow.model_center.entity.model_version_stage import ModelVersionStage
-from ai_flow.util.path_util import get_file_dir
 from ai_flow_plugins.job_plugins import flink
 from ai_flow_plugins.job_plugins.flink import FlinkPythonProcessor
 from ai_flow_plugins.job_plugins.python.python_processor import ExecutionContext, PythonProcessor
@@ -36,7 +35,7 @@ EXAMPLE_COLUMNS = ['sl', 'sw', 'pl', 'pw', 'type']
 flink.set_flink_env(flink.FlinkStreamEnv())
 
 
-class StreamPreprocessSource(FlinkPythonProcessor):
+class GenerateSource(FlinkPythonProcessor):
 
     def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         data_meta = execution_context.config['dataset']
@@ -59,12 +58,12 @@ class StreamPreprocessSource(FlinkPythonProcessor):
         return [table]
 
 
-class StreamPreprocessExecutor(FlinkPythonProcessor):
+class GenerateExecutor(FlinkPythonProcessor):
     def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         return input_list
 
 
-class StreamPreprocessSink(FlinkPythonProcessor):
+class GenerateSink(FlinkPythonProcessor):
 
     def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         table_env: TableEnvironment = execution_context.table_env
@@ -85,7 +84,6 @@ class StreamPreprocessSink(FlinkPythonProcessor):
                     )
                 ''')
         statement_set.add_insert('stream_train_preprocess_sink', input_list[0])
-        print("preprocess succ")
         return []
 
 
@@ -120,15 +118,15 @@ class ModelTrainer(FlinkPythonProcessor):
         Train and save KNN model
         """
         tab = input_list[0]
-        pdtb = tab.to_pandas()
-        x_train, y_train = pdtb.values, pdtb.pop(EXAMPLE_COLUMNS[4])
+        train_data = tab.to_pandas()
+        y_train_data = train_data.pop(EXAMPLE_COLUMNS[4])
+        x_train, y_train = train_data.values, y_train_data.values
         model_meta: af.ModelMeta = execution_context.config.get('model_info')
         clf = KNeighborsClassifier(n_neighbors=5)
-        # x_train, y_train = input_list[0][0], input_list[0][1]
         clf.fit(x_train, y_train)
 
         # Save model to local
-        model_path = get_file_dir(__file__) + '/saved_model'
+        model_path = os.path.dirname(os.path.realpath(__file__)) + '/saved_model'
         if not os.path.exists(model_path):
             os.makedirs(model_path)
         model_timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())
