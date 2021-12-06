@@ -102,11 +102,12 @@ def run_workflow():
     af.action_on_model_version_event(job_name='predict',
                                      model_version_event_type=ModelVersionEventType.MODEL_VALIDATED,
                                      model_name=stream_model_info.name)
+
+    af.workflow_operation.stop_all_workflow_executions(af.current_workflow_config().workflow_name)
     # Submit workflow
     af.workflow_operation.submit_workflow(af.current_workflow_config().workflow_name)
     # Run workflow
     af.workflow_operation.start_new_workflow_execution(af.current_workflow_config().workflow_name)
-    af.workflow_operation.stop_workflow_execution_on_events(af.current_workflow_config().workflow_name)
 
 
 if __name__ == '__main__':
