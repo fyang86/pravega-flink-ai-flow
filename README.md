@@ -87,20 +87,21 @@ start-all-aiflow-services.sh
 First we need to create sample scope and stream in Pravega. Open Pravega cli: `./pravega-0.10.1/bin/pravega-cli`:
 ```
 scope create scope
-ctream create scope/stream
+ctream create scope/train-stream
+ctream create scope/predict-stream
 ```
 
 
 ```
 cd $HOME
 git clone https://github.com/fyang86/pravega-flink-ai-flow
-cd pravega-flink-ai-flow/pravega_project/workflows/pravega_workflow
-python pravega_workflow.py
+cd pravega-flink-ai-flow/pravega_project/workflows/batch_train_batch_predict
+python batch_train_batch_predict.py
 ```
 You can check [AIFlow Web](localhost:18000) with the default username(admin) and password(admin) to see the workflow metadata, and the graph of the workflow
 and [Apache Airflow](localhost:8080) with the default username(admin) and password(admin) to view the execution of workflows.
 
-After the predict job succeed, you can check the predict result in `pravega-flink-ai-flow/pravega_project/workflows/pravega_workflow/predict_result`.
+After the predict job succeed, you can check the predict result in `pravega-flink-ai-flow/pravega_project/workflows/batch_train_batch_predict/predict_result`.
 
 Finally, run following command to stop all services:
 ```

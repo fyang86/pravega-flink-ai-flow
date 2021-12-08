@@ -22,6 +22,7 @@ from typing import List
 
 import ai_flow as af
 import pandas as pd
+from ai_flow import DatasetMeta
 from ai_flow.model_center.entity.model_version_stage import ModelVersionStage
 from ai_flow_plugins.job_plugins import flink
 from ai_flow_plugins.job_plugins.flink import FlinkPythonProcessor
@@ -35,13 +36,13 @@ EXAMPLE_COLUMNS = ['sl', 'sw', 'pl', 'pw', 'type']
 flink.set_flink_env(flink.FlinkStreamEnv())
 
 
-class GenerateSource(FlinkPythonProcessor):
+class DatagenSource(FlinkPythonProcessor):
 
     def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
-        data_meta = execution_context.config['dataset']
+        data_meta: DatasetMeta = execution_context.config['dataset']
         table_env: TableEnvironment = execution_context.table_env
         table_env.execute_sql('''
-            create table stream_train_preprocess_source (
+            create table {source_name} (
                 sl FLOAT,
                 sw FLOAT,
                 pl FLOAT,
@@ -53,23 +54,25 @@ class GenerateSource(FlinkPythonProcessor):
                 'format' = 'csv',
                 'csv.ignore-parse-errors' = 'true'
             )
-        '''.format(uri=data_meta.uri))
-        table = table_env.from_path('stream_train_preprocess_source')
+        '''.format(uri=data_meta.uri, source_name=data_meta.name))
+        table = table_env.from_path(data_meta.name)
         return [table]
 
 
-class GenerateExecutor(FlinkPythonProcessor):
+class DatagenExecutor(FlinkPythonProcessor):
     def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         return input_list
 
 
-class GenerateSink(FlinkPythonProcessor):
+class DatagenSink(FlinkPythonProcessor):
 
     def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+        data_meta: DatasetMeta = execution_context.config['dataset']
+        sink, stream = 'datagen_' + data_meta.name.split('_')[0] + '_sink', data_meta.name.split('_')[0] + '-stream'
         table_env: TableEnvironment = execution_context.table_env
         statement_set = execution_context.statement_set
         table_env.execute_sql('''
-                    create table stream_train_preprocess_sink (
+                    create table {sink_name} (
                         sl FLOAT,
                         sw FLOAT,
                         pl FLOAT,
@@ -79,20 +82,20 @@ class GenerateSink(FlinkPythonProcessor):
                         'connector' = 'pravega',
                         'controller-uri' = 'tcp://localhost:9090',
                         'scope' = 'scope',
-                        'sink.stream' = 'stream',
+                        'sink.stream' = '{stream_name}',
                         'format' = 'json'
                     )
-                ''')
-        statement_set.add_insert('stream_train_preprocess_sink', input_list[0])
+                '''.format(sink_name=sink, stream_name=stream))
+        statement_set.add_insert(sink, input_list[0])
         return []
 
 
-class StreamTrainSource(FlinkPythonProcessor):
+class TrainSource(FlinkPythonProcessor):
 
     def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         table_env: TableEnvironment = execution_context.table_env
         table_env.execute_sql('''
-            create table stream_train_source (
+            create table train_source (
                 sl FLOAT,
                 sw FLOAT,
                 pl FLOAT,
@@ -103,11 +106,11 @@ class StreamTrainSource(FlinkPythonProcessor):
                 'controller-uri' = 'tcp://localhost:9090',
                 'scope' = 'scope',
                 'scan.execution.type' = 'batch',
-                'scan.streams' = 'stream',
+                'scan.streams' = 'train-stream',
                 'format' = 'json'
             )
         ''')
-        table = table_env.from_path('stream_train_source')
+        table = table_env.from_path('train_source')
         return [table]
 
 
@@ -196,12 +199,11 @@ class ModelValidator(PythonProcessor):
         return []
 
 
-class Source(FlinkPythonProcessor):
+class PredictSource(FlinkPythonProcessor):
     def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         """
-        Flink source reader that reads local file
+        Flink source reader that reads from Pravega
         """
-        data_meta = execution_context.config['dataset']
         t_env = execution_context.table_env
         t_env.execute_sql('''
             CREATE TABLE predict_source (
@@ -211,12 +213,14 @@ class Source(FlinkPythonProcessor):
                 pw FLOAT,
                 type FLOAT
             ) WITH (
-                'connector' = 'filesystem',
-                'path' = '{uri}',
-                'format' = 'csv',
-                'csv.ignore-parse-errors' = 'true'
+                'connector' = 'pravega',
+                'controller-uri' = 'tcp://localhost:9090',
+                'scope' = 'scope',
+                'scan.execution.type' = 'batch',
+                'scan.streams' = 'predict-stream',
+                'format' = 'json'
             )
-        '''.format(uri=data_meta.uri))
+        ''')
         table = t_env.from_path('predict_source')
         return [table]
 
@@ -254,7 +258,7 @@ class Predictor(FlinkPythonProcessor):
         return [input_list[0].select("mypred(sl,sw,pl,pw)")]
 
 
-class Sink(FlinkPythonProcessor):
+class PredictSink(FlinkPythonProcessor):
 
     def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         """

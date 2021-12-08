@@ -17,7 +17,7 @@
 ## under the License.
 ##
 
-generate_data:
+datagen:
   job_type: flink
   properties:
     run_mode: cluster
