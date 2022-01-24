@@ -87,8 +87,8 @@ start-all-aiflow-services.sh
 First we need to create sample scope and stream in Pravega. Open Pravega cli: `./pravega-0.10.1/bin/pravega-cli`:
 ```
 scope create scope
-ctream create scope/train-stream
-ctream create scope/predict-stream
+stream create scope/train-stream
+stream create scope/predict-stream
 ```
 
 

@@ -38,7 +38,7 @@ flink.set_flink_env(flink.FlinkStreamEnv())
 
 class DatagenSource(FlinkPythonProcessor):
 
-    def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         data_meta: DatasetMeta = execution_context.config['dataset']
         table_env: TableEnvironment = execution_context.table_env
         table_env.execute_sql('''
@@ -60,13 +60,13 @@ class DatagenSource(FlinkPythonProcessor):
 
 
 class DatagenExecutor(FlinkPythonProcessor):
-    def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         return input_list
 
 
 class DatagenSink(FlinkPythonProcessor):
 
-    def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         data_meta: DatasetMeta = execution_context.config['dataset']
         sink, stream = 'datagen_' + data_meta.name.split('_')[0] + '_sink', data_meta.name.split('_')[0] + '-stream'
         table_env: TableEnvironment = execution_context.table_env
@@ -92,7 +92,7 @@ class DatagenSink(FlinkPythonProcessor):
 
 class TrainSource(FlinkPythonProcessor):
 
-    def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         table_env: TableEnvironment = execution_context.table_env
         table_env.execute_sql('''
             create table train_source (
@@ -116,19 +116,14 @@ class TrainSource(FlinkPythonProcessor):
 
 class ModelTrainer(FlinkPythonProcessor):
 
-    def process(self, execution_context: ExecutionContext, input_list: List[Table]) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table]) -> List[Table]:
         """
         Train and save KNN model
         """
         tab = input_list[0]
-        train_data = tab.to_pandas()
-        y_train_data = train_data.pop(EXAMPLE_COLUMNS[4])
-        x_train, y_train = train_data.values, y_train_data.values
         model_meta: af.ModelMeta = execution_context.config.get('model_info')
         clf = KNeighborsClassifier(n_neighbors=5)
-        clf.fit(x_train, y_train)
 
-        # Save model to local
         model_path = os.path.dirname(os.path.realpath(__file__)) + '/saved_model'
         if not os.path.exists(model_path):
             os.makedirs(model_path)
@@ -136,6 +131,31 @@ class ModelTrainer(FlinkPythonProcessor):
         model_path = model_path + '/' + model_timestamp
         dump(clf, model_path)
         af.register_model_version(model=model_meta, model_path=model_path)
+
+        class Train(ScalarFunction):
+            def eval(self, sl, sw, pl, pw, tp):
+                x_train, y_train = [sl, sw, pl, pw], [tp]
+                print("--------")
+                print(x_train)
+                print(y_train)
+                model_path = af.get_deployed_model_version(self.model_name).model_path
+                clf = load(model_path)
+                clf.fit(x_train, y_train)
+
+                # Save model to local
+                model_path = os.path.dirname(os.path.realpath(__file__)) + '/saved_model'
+                model_timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())
+                model_path = model_path + '/' + model_timestamp
+                dump(clf, model_path)
+                af.register_model_version(model=model_meta, model_path=model_path)
+
+        execution_context.table_env.register_function('train',
+                                                      udf(f=Train(),
+                                                          input_types=[DataTypes.FLOAT(), DataTypes.FLOAT(),
+                                                                       DataTypes.FLOAT(), DataTypes.FLOAT(),
+                                                                       DataTypes.FLOAT()],
+                                                          result_type=DataTypes.FLOAT()))
+        tab.select("train(sl, sw, pl, pw, type)")
         return []
 
 

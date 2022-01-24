@@ -17,12 +17,13 @@
 # under the License.
 #
 import os
+import time
 
 import ai_flow as af
 from ai_flow.model_center.entity.model_version_stage import ModelVersionEventType
 from ai_flow.workflow.status import Status
 
-from batch_train_batch_predict_processor import ModelTrainer, ValidateDatasetReader, ModelValidator, \
+from batch_train_streaming_predict_processor import ModelTrainer, ValidateDatasetReader, ModelValidator, \
     Predictor, DatagenSource, DatagenExecutor, \
     DatagenSink, TrainSource, PredictSource, PredictSink
 
@@ -33,9 +34,10 @@ def run_workflow():
     # Init project
     af.init_ai_flow_context()
 
-    artifact_prefix = af.current_project_config().get_project_name() + "."
+    artifact_prefix = af.current_project_config().get_project_name() + "." + \
+                      af.current_workflow_config().workflow_name + "."
 
-    # Generating data
+    # Generating traing data
     with af.job_config("datagen"):
         # Write train data to Pravega
         datagen_train_dataset = af.register_dataset(name='datagen_train_source',
@@ -53,6 +55,7 @@ def run_workflow():
                          dataset_info=train_dataset,
                          write_dataset_processor=DatagenSink())
 
+    with af.job_config("datagen_predict"):
         # Write predict data to Pravega
         datagen_predict_dataset = af.register_dataset(name='datagen_predict_source',
                                                       data_format='csv',
@@ -65,9 +68,13 @@ def run_workflow():
         predict_dataset = af.register_dataset(name='predict_source',
                                               data_format='csv',
                                               uri='tcp://localhost:9090')
-        af.write_dataset(input=datagen_predict_channel,
-                         dataset_info=predict_dataset,
-                         write_dataset_processor=DatagenSink())
+
+        start = time.time()
+        while time.time() - start < 300:
+            af.write_dataset(input=datagen_predict_channel,
+                             dataset_info=predict_dataset,
+                             write_dataset_processor=DatagenSink())
+            time.sleep(10)
 
     # Training of model
     with af.job_config('train'):

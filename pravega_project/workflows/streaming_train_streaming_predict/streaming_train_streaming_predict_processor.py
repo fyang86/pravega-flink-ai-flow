@@ -38,7 +38,7 @@ flink.set_flink_env(flink.FlinkStreamEnv())
 
 class DatagenSource(FlinkPythonProcessor):
 
-    def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         data_meta: DatasetMeta = execution_context.config['dataset']
         table_env: TableEnvironment = execution_context.table_env
         table_env.execute_sql('''
@@ -60,13 +60,13 @@ class DatagenSource(FlinkPythonProcessor):
 
 
 class DatagenExecutor(FlinkPythonProcessor):
-    def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         return input_list
 
 
 class DatagenSink(FlinkPythonProcessor):
 
-    def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         data_meta: DatasetMeta = execution_context.config['dataset']
         sink, stream = 'datagen_' + data_meta.name.split('_')[0] + '_sink', data_meta.name.split('_')[0] + '-stream'
         table_env: TableEnvironment = execution_context.table_env
@@ -92,7 +92,7 @@ class DatagenSink(FlinkPythonProcessor):
 
 class TrainSource(FlinkPythonProcessor):
 
-    def process(self, execution_context: ExecutionContext, input_list: List[Table] = None) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table] = None) -> List[Table]:
         table_env: TableEnvironment = execution_context.table_env
         table_env.execute_sql('''
             create table train_source (
@@ -116,7 +116,7 @@ class TrainSource(FlinkPythonProcessor):
 
 class ModelTrainer(FlinkPythonProcessor):
 
-    def process(self, execution_context: ExecutionContext, input_list: List[Table]) -> List[Table]:
+    def process(self, execution_context: flink.ExecutionContext, input_list: List[Table]) -> List[Table]:
         """
         Train and save KNN model
         """

@@ -22,6 +22,11 @@ datagen:
   properties:
     run_mode: cluster
 
+datagen_predict:
+  job_type: flink
+  properties:
+    run_mode: cluster
+
 train:
   job_type: flink
   properties:

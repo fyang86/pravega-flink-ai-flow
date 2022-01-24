@@ -33,7 +33,8 @@ def run_workflow():
     # Init project
     af.init_ai_flow_context()
 
-    artifact_prefix = af.current_project_config().get_project_name() + "."
+    artifact_prefix = af.current_project_config().get_project_name() + "." + \
+                      af.current_workflow_config().workflow_name + "."
 
     # Generating data
     with af.job_config("datagen"):

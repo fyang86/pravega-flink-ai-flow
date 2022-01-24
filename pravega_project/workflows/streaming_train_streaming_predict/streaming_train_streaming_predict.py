@@ -22,7 +22,7 @@ import ai_flow as af
 from ai_flow.model_center.entity.model_version_stage import ModelVersionEventType
 from ai_flow.workflow.status import Status
 
-from batch_train_batch_predict_processor import ModelTrainer, ValidateDatasetReader, ModelValidator, \
+from streaming_train_streaming_predict_processor import ModelTrainer, ValidateDatasetReader, ModelValidator, \
     Predictor, DatagenSource, DatagenExecutor, \
     DatagenSink, TrainSource, PredictSource, PredictSink
 
@@ -33,7 +33,8 @@ def run_workflow():
     # Init project
     af.init_ai_flow_context()
 
-    artifact_prefix = af.current_project_config().get_project_name() + "."
+    artifact_prefix = af.current_project_config().get_project_name() + "." + \
+                      af.current_workflow_config().workflow_name + "."
 
     # Generating data
     with af.job_config("datagen"):
